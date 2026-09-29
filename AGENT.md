@@ -1,26 +1,24 @@
 # Collage Studio: contributor and agent guide
 
-A single-page photo collage maker that runs entirely in the browser. No backend, no build step, no uploads. Photos stay on the user's device.
+A single-page photo collage maker that runs entirely in the browser. No backend, no uploads. A small dependency-free static build (Bun) renders one page per language. Photos stay on the user's device.
 
 ## Run it
 
-Serve the folder over HTTP (opening `index.html` via `file://` works only partly, and the service worker needs http):
-
 ```bash
-python3 -m http.server 5173
+bun run dev       # build dist/ and serve http://localhost:5180
+bun run check     # syntax check + strict build (CI runs this)
 ```
 
-Then open http://localhost:5173. There is no package manager, bundler, transpiler or test runner. Syntax check with:
-
-```bash
-node --check js/app.js && node --check js/data.js
-```
+Never edit `dist/` (generated, gitignored). There is no bundler or test runner.
 
 ## Layout of the repo
 
 | Path | Purpose |
 | --- | --- |
-| `index.html` | App shell: top bar, left tabs (Photos, Layout, Style, Extras), stage, inspector, export dialog, hidden file inputs |
+| `src/index.template.html` | App shell template: top bar, tabs, stage, inspector, export/about/language dialogs. `{{key}}` tokens are filled from `locales/` at build time |
+| `locales/` | `en.json` is the source of truth; `<code>.json` per language; `languages.json` lists them (first entry is the default, served at `/`) |
+| `scripts/build.mjs` | Renders `dist/<code>/index.html`, manifests, `sw.js` version, sitemap, robots, llms.txt. `--strict` fails on incomplete locales, `--check=<code>` validates one |
+| `js/i18n.js` | Runtime helpers: `L(key, vars)`, `Ln(key, n, vars)` (plurals), `Lh(key)` (tips with `<b>`/`<kbd>`), `fmtPct`, `fmtNum` |
 | `css/style.css` | All styles. Light/dark theme variables, desktop grid, tablet rule at 1100px, phone rules at 760px |
 | `js/data.js` | Data and pure logic: layout DSL, templates, aspect presets, colors, filters, fonts, stickers, and the `smartLayout` auto-fit solver |
 | `js/app.js` | Everything else: state, drawing, Konva scene, interactions, inspector, panels, export, init |
@@ -52,6 +50,14 @@ Scripts are classic (non-module) files, so top-level functions and constants are
 **Export.** `renderToCanvas` renders serially (a promise chain), temporarily sets the stage to logical size with scale 1, hides UI layers, and calls `stage.toCanvas({pixelRatio})`. `makeBlob` encodes PNG, JPG, WebP or PDF. `getBlob` caches the last result so Download, Share and Copy are instant. Limits: `maxMult()` caps area (16MP on iOS, 67MP elsewhere).
 
 **Mobile.** Below 760px the side panes and inspector become bottom sheets over a fixed tab bar. `body[data-sheet="open"]` and `body.has-sel` drive which sheet shows, and `isMobile()` gates the JS behavior.
+
+## Translations
+
+- Every user-visible string is a key in `locales/en.json`. Never hard-code English in `app.js` or the template: use `L('key')` in JS and `{{key}}` in the template. Escape with `esc()` when a translated string enters `innerHTML`.
+- Plural strings use `key.one`, `key.other` (plus `zero/two/few/many` where the language needs them, per `Intl.PluralRules`). Call `Ln('key', n)`.
+- Adding a key: add it to `en.json`, then to every locale (`bun run check` lists what is missing). Adding a language: create `locales/<code>.json`, add an entry to `languages.json`.
+- The UI mirrors for `dir: "rtl"` languages. Use logical CSS properties (`margin-inline-start`, `inset-inline-end`), not left/right. The canvas area stays `direction: ltr`.
+- No em dashes in any locale (the build rejects them).
 
 ## Conventions
 

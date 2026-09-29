@@ -97,7 +97,7 @@ let saveTimer, saveWarned = false;
 async function saveNow() {
   clearTimeout(saveTimer);
   try { await idb.set('session', { state, order: photoOrder, photos: photoOrder.map(id => { const p = photos.get(id); return { id, name: p.name, blob: p.blob }; }) }); }
-  catch (e) { if (!saveWarned) { saveWarned = true; toast('Autosave is unavailable in this browser. Use Save project to keep your work.'); } }
+  catch (e) { if (!saveWarned) { saveWarned = true; toast(L('toast.autosave')); } }
 }
 function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 800); }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveNow(); });
@@ -625,10 +625,10 @@ function dropPhoto(id, p) {
 /* ---------- adding photos ---------- */
 async function addFiles(files, opts = {}) {
   files = [...files].filter(f => f.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|avif|bmp)$/i.test(f.name));
-  if (!files.length) return toast('No supported images found');
+  if (!files.length) return toast(L('toast.noImages'));
   const added = []; let failed = 0;
   for (const f of files) { try { added.push(await loadPhoto(f, f.name)); } catch (e) { failed++; } }
-  if (failed) toast(`${failed} file(s) could not be read (unsupported format?)`);
+  if (failed) toast(Ln('toast.unreadable', failed));
   if (!added.length) return;
   if (opts.replace) { // replace the selected cell / item photo
     if (opts.replace.t === 'cell') assignPhotoToCell(opts.replace.i, added[0].id);
@@ -643,14 +643,14 @@ function finishPlacement(n) {
   if (isMobile()) document.body.dataset.sheet = '';
   if (sel && sel.t === 'cell' && !state.cells[sel.i]) sel = null;
   redrawAll(); renderTray(); renderTemplates(); renderInspector(); syncControls(); commit();
-  if (state.mode === 'grid' && state.autoLayout && photoOrder.length > MAX_CELLS) toast(`Auto-fit places the first ${MAX_CELLS} photos. The rest stay in the Photos tab.`);
-  else if (n > 1) toast(state.mode === 'grid' && state.smartLoss != null ? `Auto-fit ${photoOrder.length} photos: only ${(state.smartLoss * 100).toFixed(1)}% cropped` : `${n} photos added`);
+  if (state.mode === 'grid' && state.autoLayout && photoOrder.length > MAX_CELLS) toast(L('toast.maxCells', { max: MAX_CELLS }));
+  else if (n > 1) toast(state.mode === 'grid' && state.smartLoss != null ? L('toast.autoFitDone', { count: Ln('photos.count', photoOrder.length), pct: fmtPct(state.smartLoss) }) : Ln('toast.photosAdded', n));
 }
 function placePhoto(id, single, bulk) {
   if (state.mode === 'free') { addImageItem(id); if (single) { redrawAll(); commit(); } return; }
   if (state.autoLayout) { if (!bulk) { runSmart(); finishPlacement(1); } return; }
   let i = sel && sel.t === 'cell' && !state.cells[sel.i].photoId ? sel.i : state.cells.findIndex(c => !c.photoId);
-  if (i < 0) { toast('All cells are full. Drag the photo onto a cell to replace it, or add cells.'); return; }
+  if (i < 0) { toast(L('toast.cellsFull')); return; }
   state.cells[i] = newCrop(id);
   if (single) { redrawAll(false); renderTray(); commit(); }
 }
@@ -754,7 +754,7 @@ function setMode(m) {
 
 /* ---------- extras: text + stickers ---------- */
 function addText(preset) {
-  const P = { head: { text: 'Your title', size: 150, bold: true }, sub: { text: 'Subtitle here', size: 84, bold: false }, cap: { text: 'Caption', size: 52, bold: false, italic: true } }[preset];
+  const P = { head: { text: L('text.defaultHead'), size: 150, bold: true }, sub: { text: L('text.defaultSub'), size: 84, bold: false }, cap: { text: L('text.defaultCap'), size: 52, bold: false, italic: true } }[preset];
   const dark = ['#111111', '#0f172a'].includes(state.bg.c1) && state.bg.type === 'solid';
   const it = Object.assign({ id: uid(), type: 'text', x: state.canvas.w / 2, y: state.canvas.h / 2, r: 0, font: FONTS[0][1], color: dark ? '#ffffff' : '#111111', bold: false, italic: false, stroke: 0, strokeColor: '#ffffff', shadow: false, op: 1 }, P);
   state.items.push(it); redrawAll(false); select({ t: 'item', id: it.id }, true); commit();
@@ -767,64 +767,55 @@ function addSticker(ch) {
 /* ---------- inspector ---------- */
 let replaceTarget = null;
 const setPath = (o, path, val) => { const ks = path.split('.'), last = ks.pop(); ks.reduce((a, k) => a[k], o)[last] = val; };
-const sl = (label, k, min, max, step, val, suffix = '') => `<label class="row"><span>${label}</span><input type="range" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${val}"><output>${step < 1 ? (+val).toFixed(step < 0.1 ? 2 : 1) : val}${suffix}</output></label>`;
-const btn = (a, icon, label, v = '', cls = '') => `<button class="btn sm ${cls}" data-a="${a}" ${v ? `data-v="${v}"` : ''} title="${label}">${svg(icon)}<span>${label}</span></button>`;
+const sl = (label, k, min, max, step, val, suffix = '') => `<label class="row"><span>${esc(label)}</span><input type="range" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${val}"><output>${step < 1 ? (+val).toFixed(step < 0.1 ? 2 : 1) : val}${suffix}</output></label>`;
+const btn = (a, icon, label, v = '', cls = '') => `<button class="btn sm ${cls}" data-a="${a}" ${v ? `data-v="${v}"` : ''} title="${esc(label)}">${svg(icon)}<span>${esc(label)}</span></button>`;
 
 function renderInspector() {
   const el = $('#insp'), t = target();
   el.classList.toggle('idle', !t); document.body.classList.toggle('has-sel', !!t);
   if (!t) {
     const auto = state.mode === 'grid' && state.smartLoss != null && state.layoutId === 'smart';
-    el.innerHTML = `<h3>Inspector</h3>
-      ${auto ? `<div class="stat"><b>${(state.smartLoss * 100).toFixed(1)}%</b><span>of photo area cropped by the auto-fit layout (lower is better)</span></div>` : ''}
-      <p class="muted">Click a photo, text or sticker to edit it.</p>
-      <ul class="tips">
-        <li><b>Drag</b> a photo to reposition inside its cell</li>
-        <li><b>Scroll</b> over a photo to zoom</li>
-        <li><b>Drag the lines</b> between cells to resize them</li>
-        <li><b>⇄ handle</b> on a selected cell swaps two photos</li>
-        <li><b>Double-click</b> an empty cell to add a photo, or a photo to reset its crop</li>
-        <li><kbd>⌘/Ctrl V</kbd> pastes an image from the clipboard</li>
-        <li>Drag thumbnails from the Photos tab onto cells</li>
-        <li><kbd>⌘/Ctrl Z</kbd> undo · <kbd>Del</kbd> remove · <kbd>⌘/Ctrl D</kbd> duplicate</li>
-      </ul>`;
+    el.innerHTML = `<h3>${L('inspector.title')}</h3>
+      ${auto ? `<div class="stat"><b>${fmtPct(state.smartLoss)}</b><span>${L('inspector.cropStat')}</span></div>` : ''}
+      <p class="muted">${L('inspector.hint')}</p>
+      <ul class="tips">${Lh('inspector.tips').map(x => `<li>${x}</li>`).join('')}</ul>`;
     return;
   }
   if (sel.t === 'cell' && !t.photoId) {
-    el.innerHTML = `<h3>Empty cell</h3><p class="muted">Add a photo to this cell, or click a photo in the Photos tab.</p><div class="btnrow">${btn('pick', 'upload', 'Upload photo')}${btn('del', 'trash', 'Remove cell', '', 'danger')}</div>`;
+    el.innerHTML = `<h3>${L('inspector.emptyCell')}</h3><p class="muted">${L('inspector.emptyCellHint')}</p><div class="btnrow">${btn('pick', 'upload', L('act.upload'))}${btn('del', 'trash', L('act.removeCell'), '', 'danger')}</div>`;
     return;
   }
   let html = '';
   const isImg = sel.t === 'cell' || t.type === 'image';
   if (isImg) {
     const p = photos.get(t.photoId);
-    html += `<h3>${sel.t === 'cell' ? 'Photo' : 'Freeform photo'}</h3><p class="muted trunc" title="${p ? esc(p.name) : ''}">${p ? esc(p.name) : ''}</p>`;
-    html += `<div class="btnrow">${btn('rotL', 'rotccw', 'Rotate L')}${btn('rotR', 'rotcw', 'Rotate R')}${btn('flip', 'flip', 'Flip')}${btn('pick', 'replace', 'Replace')}</div>`;
-    html += sl('Zoom', 'zoom', 1, 5, 0.01, t.zoom, '×');
-    html += `<div class="chips"><button class="chip ${t.fit ? 'on' : ''}" data-a="fit" title="Show the whole photo instead of filling the cell">Fit whole photo (no crop)</button></div>`;
+    html += `<h3>${sel.t === 'cell' ? L('inspector.photo') : L('inspector.freePhoto')}</h3><p class="muted trunc" title="${p ? esc(p.name) : ''}">${p ? esc(p.name) : ''}</p>`;
+    html += `<div class="btnrow">${btn('rotL', 'rotccw', L('act.rotL'))}${btn('rotR', 'rotcw', L('act.rotR'))}${btn('flip', 'flip', L('act.flip'))}${btn('pick', 'replace', L('act.replace'))}</div>`;
+    html += sl(L('insp.zoom'), 'zoom', 1, 5, 0.01, t.zoom, '×');
+    html += `<div class="chips"><button class="chip ${t.fit ? 'on' : ''}" data-a="fit" title="${esc(L('insp.fitTitle'))}">${L('insp.fit')}</button></div>`;
     if (sel.t === 'item') {
-      html += `<div class="sub">Frame</div><div class="chips">${['none', 'white', 'polaroid'].map(f => `<button class="chip ${t.frame === f ? 'on' : ''}" data-a="frame" data-v="${f}">${f === 'none' ? 'None' : f === 'white' ? 'White' : 'Polaroid'}</button>`).join('')}</div>`;
-      html += sl('Opacity', 'op', 0.1, 1, 0.01, t.op == null ? 1 : t.op);
+      html += `<div class="sub">${L('insp.frame')}</div><div class="chips">${['none', 'white', 'polaroid'].map(f => `<button class="chip ${t.frame === f ? 'on' : ''}" data-a="frame" data-v="${f}">${L('frame.' + f)}</button>`).join('')}</div>`;
+      html += sl(L('insp.opacity'), 'op', 0.1, 1, 0.01, t.op == null ? 1 : t.op);
     }
-    html += `<div class="sub">Filters</div><div class="chips">${Object.keys(FILTERS).map(k => `<button class="chip" data-a="filter" data-v="${k}">${k === 'bw' ? 'B&W' : k[0].toUpperCase() + k.slice(1)}</button>`).join('')}</div>`;
-    html += sl('Brightness', 'f.b', 50, 150, 1, t.f.b) + sl('Contrast', 'f.c', 50, 150, 1, t.f.c) + sl('Saturation', 'f.s', 0, 200, 1, t.f.s) + sl('Warmth / hue', 'f.hue', -60, 60, 1, t.f.hue) + sl('Blur', 'f.blur', 0, 12, 0.5, t.f.blur) + sl('Vignette', 'f.vig', 0, 100, 1, t.f.vig);
-    html += `<div class="btnrow">${btn('applyAll', 'sparkle', 'Apply filter to all')}${btn('resetF', 'undo', 'Reset')}</div>`;
+    html += `<div class="sub">${L('insp.filters')}</div><div class="chips">${Object.keys(FILTERS).map(k => `<button class="chip" data-a="filter" data-v="${k}">${esc(L('filter.' + k))}</button>`).join('')}</div>`;
+    html += sl(L('insp.brightness'), 'f.b', 50, 150, 1, t.f.b) + sl(L('insp.contrast'), 'f.c', 50, 150, 1, t.f.c) + sl(L('insp.saturation'), 'f.s', 0, 200, 1, t.f.s) + sl(L('insp.hue'), 'f.hue', -60, 60, 1, t.f.hue) + sl(L('insp.blur'), 'f.blur', 0, 12, 0.5, t.f.blur) + sl(L('insp.vignette'), 'f.vig', 0, 100, 1, t.f.vig);
+    html += `<div class="btnrow">${btn('applyAll', 'sparkle', L('act.applyAll'))}${btn('resetF', 'undo', L('act.reset'))}</div>`;
     html += `<div class="btnrow">`;
-    if (sel.t === 'item') html += btn('front', 'front', 'Front') + btn('back', 'back', 'Back') + btn('dup', 'dup', 'Duplicate');
-    html += btn('del', 'trash', sel.t === 'cell' ? 'Remove cell' : 'Delete', '', 'danger') + `</div>`;
+    if (sel.t === 'item') html += btn('front', 'front', L('act.front')) + btn('back', 'back', L('act.back')) + btn('dup', 'dup', L('act.dup'));
+    html += btn('del', 'trash', sel.t === 'cell' ? L('act.removeCell') : L('act.delete'), '', 'danger') + `</div>`;
   } else if (t.type === 'text') {
-    html += `<h3>Text</h3><textarea data-k="text" rows="2">${esc(t.text)}</textarea>
-      <label class="row"><span>Font</span><select data-k="font">${FONTS.map(f => `<option value='${f[1]}' ${f[1] === t.font ? 'selected' : ''}>${f[0]}</option>`).join('')}</select></label>
-      ${sl('Size', 'size', 16, 400, 1, Math.round(t.size))}
-      <label class="row"><span>Color</span><input type="color" data-k="color" value="${t.color}"></label>
-      <div class="chips"><label class="chip chk"><input type="checkbox" data-k="bold" ${t.bold ? 'checked' : ''}>Bold</label><label class="chip chk"><input type="checkbox" data-k="italic" ${t.italic ? 'checked' : ''}>Italic</label><label class="chip chk"><input type="checkbox" data-k="shadow" ${t.shadow ? 'checked' : ''}>Shadow</label></div>
-      ${sl('Outline', 'stroke', 0, 24, 1, t.stroke)}
-      <label class="row"><span>Outline color</span><input type="color" data-k="strokeColor" value="${t.strokeColor}"></label>
-      ${sl('Opacity', 'op', 0.1, 1, 0.01, t.op)}
-      <div class="btnrow">${btn('front', 'front', 'Front')}${btn('back', 'back', 'Back')}${btn('dup', 'dup', 'Duplicate')}${btn('del', 'trash', 'Delete', '', 'danger')}</div>`;
+    html += `<h3>${L('inspector.text')}</h3><textarea data-k="text" rows="2">${esc(t.text)}</textarea>
+      <label class="row"><span>${L('insp.font')}</span><select data-k="font">${FONTS.map(f => `<option value='${f[1]}' ${f[1] === t.font ? 'selected' : ''}>${esc(L('font.' + f[0].toLowerCase().replace(/ /g, '-')))}</option>`).join('')}</select></label>
+      ${sl(L('insp.size'), 'size', 16, 400, 1, Math.round(t.size))}
+      <label class="row"><span>${L('insp.color')}</span><input type="color" data-k="color" value="${t.color}"></label>
+      <div class="chips"><label class="chip chk"><input type="checkbox" data-k="bold" ${t.bold ? 'checked' : ''}>${L('insp.bold')}</label><label class="chip chk"><input type="checkbox" data-k="italic" ${t.italic ? 'checked' : ''}>${L('insp.italic')}</label><label class="chip chk"><input type="checkbox" data-k="shadow" ${t.shadow ? 'checked' : ''}>${L('insp.shadow')}</label></div>
+      ${sl(L('insp.outline'), 'stroke', 0, 24, 1, t.stroke)}
+      <label class="row"><span>${L('insp.outlineColor')}</span><input type="color" data-k="strokeColor" value="${t.strokeColor}"></label>
+      ${sl(L('insp.opacity'), 'op', 0.1, 1, 0.01, t.op)}
+      <div class="btnrow">${btn('front', 'front', L('act.front'))}${btn('back', 'back', L('act.back'))}${btn('dup', 'dup', L('act.dup'))}${btn('del', 'trash', L('act.delete'), '', 'danger')}</div>`;
   } else {
-    html += `<h3>Sticker</h3>${sl('Size', 'size', 30, 500, 1, Math.round(t.size))}${sl('Opacity', 'op', 0.1, 1, 0.01, t.op)}
-      <div class="btnrow">${btn('front', 'front', 'Front')}${btn('back', 'back', 'Back')}${btn('dup', 'dup', 'Duplicate')}${btn('del', 'trash', 'Delete', '', 'danger')}</div>`;
+    html += `<h3>${L('inspector.sticker')}</h3>${sl(L('insp.size'), 'size', 30, 500, 1, Math.round(t.size))}${sl(L('insp.opacity'), 'op', 0.1, 1, 0.01, t.op)}
+      <div class="btnrow">${btn('front', 'front', L('act.front'))}${btn('back', 'back', L('act.back'))}${btn('dup', 'dup', L('act.dup'))}${btn('del', 'trash', L('act.delete'), '', 'danger')}</div>`;
   }
   el.innerHTML = html;
 }
@@ -857,7 +848,7 @@ $('#insp').addEventListener('click', e => {
   else if (a === 'frame') t.frame = v;
   else if (a === 'filter') t.f = Object.assign(DEF_F(), FILTERS[v]);
   else if (a === 'resetF') t.f = DEF_F();
-  else if (a === 'applyAll') { const f = JSON.stringify(t.f); state.cells.forEach(c => { c.f = JSON.parse(f); }); state.items.forEach(i => { if (i.type === 'image') i.f = JSON.parse(f); }); toast('Filter applied to all photos'); }
+  else if (a === 'applyAll') { const f = JSON.stringify(t.f); state.cells.forEach(c => { c.f = JSON.parse(f); }); state.items.forEach(i => { if (i.type === 'image') i.f = JSON.parse(f); }); toast(L('toast.filterAll')); }
   else if (a === 'del') {
     if (sel.t === 'cell') { removeCell(sel.i); return; }
     state.items = state.items.filter(i => i.id !== sel.id); sel = null;
@@ -883,27 +874,27 @@ function tplSvg(tree) {
 }
 function renderTemplates() {
   const n = state.cells.length;
-  $('#cellCount').textContent = state.layoutId === 'smart' ? `${n} · auto` : n;
+  $('#cellCount').textContent = state.layoutId === 'smart' ? L('layout.autoBadge', { n }) : n;
   $('#autoBtn').classList.toggle('on', state.autoLayout && state.layoutId === 'smart');
-  $('#autoInfo').textContent = state.layoutId === 'smart' && state.smartLoss != null ? `Cropping only ${(state.smartLoss * 100).toFixed(1)}% of your photos` : state.layoutId === 'smart' ? 'Custom layout (resized by hand). Click to re-fit' : photoOrder.length ? 'Pick to fit all photos with the least crop' : 'Add photos, then the best layout is picked for their shapes';
+  $('#autoInfo').textContent = state.layoutId === 'smart' && state.smartLoss != null ? L('layout.autoInfo.loss', { pct: fmtPct(state.smartLoss) }) : state.layoutId === 'smart' ? L('layout.autoInfo.custom') : photoOrder.length ? L('layout.autoInfo.pick') : L('layout.autoInfo.empty');
   const list = TEMPLATES[n] || [];
-  $('#tplGrid').innerHTML = list.length ? list.map(t => `<button class="tpl ${t.id === state.layoutId ? 'on' : ''}" data-id="${t.id}" title="Layout">${tplSvg(t.tree)}</button>`).join('') : '<p class="muted">Manual templates are available up to 16 cells. Use Auto-fit for larger sets.</p>';
+  $('#tplGrid').innerHTML = list.length ? list.map(t => `<button class="tpl ${t.id === state.layoutId ? 'on' : ''}" data-id="${t.id}" title="${esc(L('layout.template'))}">${tplSvg(t.tree)}</button>`).join('') : `<p class="muted">${L('layout.maxTemplates')}</p>`;
 }
 function renderTray() {
   const used = new Map();
   state.cells.forEach(c => c.photoId && used.set(c.photoId, (used.get(c.photoId) || 0) + 1));
   state.items.forEach(i => i.type === 'image' && used.set(i.photoId, (used.get(i.photoId) || 0) + 1));
-  $('#tray').innerHTML = photoOrder.map(id => { const p = photos.get(id); return `<div class="thumb ${used.has(id) ? 'used' : ''}" draggable="true" data-id="${id}" title="${esc(p.name)}"><img src="${p.thumb}" alt="" draggable="false"><button class="x" data-del="${id}" title="Remove">${svg('x')}</button>${used.has(id) ? '<i>✓</i>' : ''}</div>`; }).join('');
+  $('#tray').innerHTML = photoOrder.map(id => { const p = photos.get(id); return `<div class="thumb ${used.has(id) ? 'used' : ''}" draggable="true" data-id="${id}" title="${esc(p.name)}"><img src="${p.thumb}" alt="" draggable="false"><button class="x" data-del="${id}" title="${esc(L('photos.remove'))}">${svg('x')}</button>${used.has(id) ? '<i>✓</i>' : ''}</div>`; }).join('');
   $('#trayEmpty').style.display = photoOrder.length ? 'none' : 'block';
-  $('#photoCount').textContent = photoOrder.length ? `${photoOrder.length} photo${photoOrder.length > 1 ? 's' : ''}` : '';
+  $('#photoCount').textContent = photoOrder.length ? Ln('photos.count', photoOrder.length) : '';
 }
 $('#tray').addEventListener('dragstart', e => { const t = e.target.closest('.thumb'); if (t) e.dataTransfer.setData('text/plain', 'photo:' + t.dataset.id); });
 $('#tray').addEventListener('click', e => {
   const d = e.target.closest('[data-del]'); if (d) { removePhoto(d.dataset.del); return; }
   const t = e.target.closest('.thumb'); if (!t) return;
-  if (state.mode === 'grid' && sel && sel.t === 'cell' && state.cells[sel.i].photoId !== t.dataset.id) { assignPhotoToCell(sel.i, t.dataset.id); toast('Photo placed in the selected cell'); return; }
+  if (state.mode === 'grid' && sel && sel.t === 'cell' && state.cells[sel.i].photoId !== t.dataset.id) { assignPhotoToCell(sel.i, t.dataset.id); toast(L('toast.placed')); return; }
   if (state.mode === 'free') { addImageItem(t.dataset.id); commit(); renderTray(); }
-  else if (state.autoLayout) toast('Auto-fit already places every photo. Pick a template for manual placement.');
+  else if (state.autoLayout) toast(L('toast.autoPlaces'));
   else placePhoto(t.dataset.id, true);
 });
 $('#tplGrid').addEventListener('click', e => {
@@ -913,15 +904,15 @@ $('#tplGrid').addEventListener('click', e => {
   redrawAll(); renderTemplates(); renderInspector(); commit();
 });
 $('#autoBtn').addEventListener('click', () => {
-  if (!photoOrder.length) return toast('Upload some photos first');
+  if (!photoOrder.length) return toast(L('toast.uploadFirst'));
   runSmart(); sel = null; redrawAll(); renderTemplates(); renderInspector(); renderTray(); commit();
-  toast(`Auto-fit: ${(state.smartLoss * 100).toFixed(1)}% of photo area cropped`);
+  toast(L('toast.autoFitCrop', { pct: fmtPct(state.smartLoss) }));
 });
 $('#cellMinus').addEventListener('click', () => { setCount(state.cells.length - 1); redrawAll(); renderTemplates(); renderTray(); commit(); });
 $('#cellPlus').addEventListener('click', () => { setCount(state.cells.length + 1); redrawAll(); renderTemplates(); commit(); });
 
 /* canvas size */
-$('#presetSel').innerHTML = ASPECTS.map(a => `<option value="${a.id}">${a.n}</option>`).join('');
+$('#presetSel').innerHTML = ASPECTS.map(a => `<option value="${a.id}">${esc(L('aspect.' + a.id))}</option>`).join('');
 function setCanvas(w, hh, preset) {
   state.canvas = { w: clamp(Math.round(w), 200, 6000), h: clamp(Math.round(hh), 200, 6000), preset };
   if (state.mode === 'grid' && state.autoLayout && photoOrder.length) runSmart();
@@ -965,7 +956,7 @@ $('#gradSw').innerHTML = GRADIENTS.map((g, i) => `<button class="sw" style="back
 $('#solidSw').addEventListener('click', e => { const b = e.target.closest('[data-c]'); if (!b) return; Object.assign(state.bg, { type: 'solid', c1: b.dataset.c }); syncControls(); redrawAll(); applyView(); commit(); });
 $('#gradSw').addEventListener('click', e => { const b = e.target.closest('[data-g]'); if (!b) return; const g = GRADIENTS[b.dataset.g]; Object.assign(state.bg, { type: 'gradient', c1: g[0], c2: g[1], angle: g[2] }); syncControls(); redrawAll(); applyView(); commit(); });
 const bgCss = b => b.type === 'gradient' ? `linear-gradient(${b.angle}deg,${b.c1},${b.c2})` : b.c1;
-$('#themes').innerHTML = THEMES.map((t, i) => `<button class="theme" data-i="${i}"><span class="tp" style="background:${bgCss(t.bg)};padding:${Math.min(6, t.pad / 6)}px;gap:${Math.min(4, t.gap / 5)}px"><i style="border-radius:${Math.min(6, t.radius / 6)}px"></i><i style="border-radius:${Math.min(6, t.radius / 6)}px"></i><i style="border-radius:${Math.min(6, t.radius / 6)}px"></i><i style="border-radius:${Math.min(6, t.radius / 6)}px"></i></span><em>${t.n}</em></button>`).join('');
+$('#themes').innerHTML = THEMES.map((t, i) => `<button class="theme" data-i="${i}"><span class="tp" style="background:${bgCss(t.bg)};padding:${Math.min(6, t.pad / 6)}px;gap:${Math.min(4, t.gap / 5)}px"><i style="border-radius:${Math.min(6, t.radius / 6)}px"></i><i style="border-radius:${Math.min(6, t.radius / 6)}px"></i><i style="border-radius:${Math.min(6, t.radius / 6)}px"></i><i style="border-radius:${Math.min(6, t.radius / 6)}px"></i></span><em>${esc(L('theme.' + t.n.toLowerCase()))}</em></button>`).join('');
 $('#themes').addEventListener('click', e => {
   const b = e.target.closest('.theme'); if (!b) return; const t = THEMES[b.dataset.i];
   state.gap = t.gap; state.pad = t.pad; state.radius = t.radius;
@@ -1010,7 +1001,7 @@ $('#themeBtn').addEventListener('click', () => {
   document.documentElement.dataset.theme = d; try { localStorage.setItem('cs-theme', d); } catch (e) { /* ignore */ }
 });
 $('#newBtn').addEventListener('click', async () => {
-  if (!confirm('Start a new collage? Current photos and layout will be cleared.')) return;
+  if (!confirm(L('confirm.new'))) return;
   photos.clear(); photoOrder = []; state = defaultState(); sel = null; hist.u = []; hist.r = []; lastSnap = snap(); blobCache = null;
   fullRefresh(); updateHistBtns(); scheduleSave();
 });
@@ -1091,7 +1082,7 @@ async function makeBlob(fmt = exp.fmt, mult = exp.mult) {
   let out = c;
   if (fmt === 'jpg') { out = document.createElement('canvas'); out.width = c.width; out.height = c.height; const x = out.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(c, 0, 0); }
   const blob = await new Promise(r => out.toBlob(r, MIME[fmt], exp.q));
-  if (!blob) throw new Error('This image is too large for your browser. Try a lower resolution.');
+  if (!blob) throw new Error(L('toast.tooLarge'));
   return blob;
 }
 /* the last render is cached, so Download / Share / Copy right after the size estimate are instant */
@@ -1123,7 +1114,7 @@ function scaleLabel() {
   $('#expScale').innerHTML = [1, 2, 3, 4].map(m => `<button data-m="${m}" class="${exp.mult === m ? 'on' : ''}" ${m > mm ? 'disabled' : ''}>${m}×<small>${Math.round(state.canvas.w * m)}×${Math.round(state.canvas.h * m)}</small></button>`).join('');
 }
 function estimate() {
-  clearTimeout(estTimer); const id = ++estId; $('#expInfo').textContent = 'Calculating size…';
+  clearTimeout(estTimer); const id = ++estId; $('#expInfo').textContent = L('export.calculating');
   estTimer = setTimeout(async () => {
     let b; try { b = await getBlob(); } catch (err) { if (id === estId) $('#expInfo').textContent = err.message; return; } if (id !== estId) return;
     $('#expInfo').textContent = `${Math.round(state.canvas.w * Math.min(exp.mult, maxMult()))} × ${Math.round(state.canvas.h * Math.min(exp.mult, maxMult()))}px · ${(b.size / 1048576).toFixed(2)} MB`;
@@ -1137,7 +1128,7 @@ function syncExportUi() {
   scaleLabel(); estimate();
 }
 $('#exportBtn').addEventListener('click', async () => {
-  if (!state.cells.some(c => c.photoId) && !state.items.length) return toast('Add some photos first');
+  if (!state.cells.some(c => c.photoId) && !state.items.length) return toast(L('toast.addFirst'));
   select(null);
   const c = await renderToCanvas(Math.min(1, 640 / Math.max(state.canvas.w, state.canvas.h)));
   $('#expPrev').src = c.toDataURL('image/png');
@@ -1150,27 +1141,27 @@ $('#expFmt').addEventListener('click', e => { const b = e.target.closest('[data-
 $('#expScale').addEventListener('click', e => { const b = e.target.closest('[data-m]'); if (b && !b.disabled) { exp.mult = +b.dataset.m; syncExportUi(); } });
 $('#expQ').addEventListener('input', e => { exp.q = +e.target.value; e.target.nextElementSibling.value = Math.round(exp.q * 100) + '%'; estimate(); });
 $('#pdfPage').addEventListener('change', e => { exp.page = e.target.value; estimate(); });
-async function withBusy(btnEl, fn) { btnEl.classList.add('busy'); try { await fn(); } catch (err) { console.error(err); toast(err.name === 'NotAllowedError' ? 'Ready. Tap the button again.' : 'Something went wrong: ' + (err.message || err)); } btnEl.classList.remove('busy'); }
-$('#expDownload').addEventListener('click', e => withBusy(e.currentTarget, async () => { const b = await getBlob(); download(b, fname()); toast(`Saved ${fname()}`); }));
+async function withBusy(btnEl, fn) { btnEl.classList.add('busy'); try { await fn(); } catch (err) { console.error(err); toast(err.name === 'NotAllowedError' ? L('toast.tapAgain') : L('toast.error', { msg: err.message || err })); } btnEl.classList.remove('busy'); }
+$('#expDownload').addEventListener('click', e => withBusy(e.currentTarget, async () => { const b = await getBlob(); download(b, fname()); toast(L('toast.saved', { name: fname() })); }));
 $('#expCopy').addEventListener('click', e => withBusy(e.currentTarget, async () => {
-  if (!navigator.clipboard || !window.ClipboardItem) return toast('Clipboard images are not supported in this browser. Use Download.');
+  if (!navigator.clipboard || !window.ClipboardItem) return toast(L('toast.noClipboard'));
   await navigator.clipboard.write([new ClipboardItem({ 'image/png': getBlob('png', exp.mult) })]);
-  toast('Image copied. Paste it anywhere.');
+  toast(L('toast.copied'));
 }));
 $('#expShare').addEventListener('click', e => withBusy(e.currentTarget, async () => {
   const b = await getBlob(); const file = new File([b], fname(), { type: b.type });
-  if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: 'My collage' }); } catch (err) { if (err.name !== 'AbortError') throw err; } }
-  else toast('Sharing files is not supported here. Use Download or Copy.');
+  if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: L('export.shareTitle') }); } catch (err) { if (err.name !== 'AbortError') throw err; } }
+  else toast(L('toast.noShare'));
 }));
 $('#expOpen').addEventListener('click', e => withBusy(e.currentTarget, async () => {
-  const w = window.open('', '_blank'); if (!w) return toast('Allow pop-ups to open the image');
+  const w = window.open('', '_blank'); if (!w) return toast(L('toast.popupOpen'));
   try { w.location.href = URL.createObjectURL(await getBlob()); } catch (err) { w.close(); throw err; }
 }));
 $('#expPrint').addEventListener('click', e => withBusy(e.currentTarget, async () => {
-  const w = window.open('', '_blank'); if (!w) return toast('Allow pop-ups to print');
+  const w = window.open('', '_blank'); if (!w) return toast(L('toast.popupPrint'));
   try {
     const u = URL.createObjectURL(await getBlob('png', exp.mult)), d = w.document;
-    d.title = 'Print collage';
+    d.title = L('export.printTitle');
     const st = d.createElement('style'); st.textContent = '@page{margin:0}body{margin:0;display:grid;place-items:center;min-height:100vh}img{max-width:100%;max-height:100vh}';
     const im = d.createElement('img'); im.onload = () => setTimeout(() => w.print(), 200); im.src = u;
     d.head.append(st); d.body.append(im);
@@ -1180,7 +1171,7 @@ const blobToDataURL = b => new Promise(r => { const f = new FileReader(); f.onlo
 $('#expSave').addEventListener('click', e => withBusy(e.currentTarget, async () => {
   const ph = []; for (const id of photoOrder) { const p = photos.get(id); ph.push({ id, name: p.name, data: await blobToDataURL(p.blob) }); }
   download(new Blob([JSON.stringify({ v: 1, state, order: photoOrder, photos: ph })], { type: 'application/json' }), ($('#expName').value.trim() || 'collage') + '.collage.json');
-  toast('Project saved. Open it later with "Open project".');
+  toast(L('toast.projectSaved'));
 }));
 $('#expLoad').addEventListener('click', () => $('#projInput').click());
 function sanitizeState(d) {
@@ -1208,10 +1199,10 @@ $('#projInput').addEventListener('change', async e => {
     for (const p of d.photos) await loadPhoto(await (await fetch(p.data)).blob(), p.name, p.id);
     photoOrder = d.order.filter(id => photos.has(id));
     state = sanitizeState(d.state); sel = null; hist.u = []; hist.r = []; lastSnap = snap();
-    $('#exportDlg').close(); fullRefresh(); updateHistBtns(); scheduleSave(); toast('Project opened');
+    $('#exportDlg').close(); fullRefresh(); updateHistBtns(); scheduleSave(); toast(L('toast.projectOpened'));
   } catch (err) {
     photos.clear(); oldPhotos.forEach((v, k) => photos.set(k, v)); photoOrder = oldOrder;
-    toast('Could not open that project file');
+    toast(L('toast.projectBad'));
   }
 });
 
@@ -1221,6 +1212,15 @@ window.addEventListener('paste', e => {
   const files = [...(e.clipboardData?.files || [])].filter(f => f.type.startsWith('image/'));
   if (files.length) { e.preventDefault(); addFiles(files.map((f, i) => new File([f], `pasted-${Date.now()}-${i}.${f.type.split('/')[1] || 'png'}`, { type: f.type }))); }
 });
+
+/* about + language dialogs. Language links are real anchors (crawlable); the click only remembers the choice and saves the session first. */
+[['#aboutBtn', '#aboutDlg'], ['#langBtn', '#langDlg']].forEach(([b, d]) => $(b).addEventListener('click', () => $(d).showModal()));
+$$('dialog.info').forEach(d => d.addEventListener('click', e => { if (e.target === d || e.target.closest('[data-close]')) d.close(); }));
+$$('[data-lang]').forEach(a => a.addEventListener('click', async e => {
+  try { localStorage.setItem('cs-lang', a.dataset.lang); } catch (err) { /* ignore */ }
+  if (e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;
+  e.preventDefault(); await saveNow(); location.href = a.href;
+}));
 
 /* ---------- init ---------- */
 async function init() {
@@ -1232,11 +1232,11 @@ async function init() {
     if (d && d.photos && d.photos.length) {
       for (const p of d.photos) await loadPhoto(p.blob, p.name, p.id);
       photoOrder = d.order.filter(id => photos.has(id)); state = sanitizeState(d.state); lastSnap = snap();
-      toast('Restored your last session');
+      toast(L('toast.restored'));
     }
   } catch (e) { /* no saved session */ }
   if (!WEBP) $('#expFmt [data-f=webp]').hidden = true;
-  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register((window.ROOT || '') + 'sw.js').catch(() => {});
   if (isMobile() && !photoOrder.length) document.body.dataset.sheet = 'open';
   fullRefresh(); updateHistBtns();
   window.__collage = { get state() { return state; }, photos, runSmart, addFiles };

@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="{{lang}}" dir="{{dir}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{{meta.title}}</title>
+<meta name="description" content="{{meta.description}}">
+<meta name="theme-color" content="#7c5cff">
+<link rel="canonical" href="{{canonical}}">
+{{hreflang}}
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Collage Studio">
+<meta property="og:title" content="{{meta.title}}">
+<meta property="og:description" content="{{meta.description}}">
+<meta property="og:url" content="{{canonical}}">
+<meta property="og:locale" content="{{ogLocale}}">
+{{ogAlternates}}
+<meta property="og:image" content="{{site}}/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="{{meta.ogAlt}}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{meta.title}}">
+<meta name="twitter:description" content="{{meta.description}}">
+<meta name="twitter:image" content="{{site}}/og.png">
+<link rel="icon" href="{{root}}icon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="{{root}}css/style.css?v={{ver}}">
+{{redirect}}
+<script type="application/ld+json">{{jsonld}}</script>
+</head>
+<body data-mode="grid">
+<noscript><p style="padding:24px;font:16px system-ui">{{noscript}}</p></noscript>
+<header class="topbar">
+  <h1 class="brand"><span class="logo"></span><b>Collage Studio</b><span class="sr-only"> · {{brand.tagline}}</span></h1>
+  <div class="seg" id="modeSeg" title="{{mode.title}}">
+    <button data-mode="grid" class="on">{{mode.grid}}</button><button data-mode="free">{{mode.free}}</button>
+  </div>
+  <div class="tools">
+    <button class="icon" id="undoBtn" title="{{undo}}" aria-label="{{undo}}" data-icon="undo" disabled></button>
+    <button class="icon" id="redoBtn" title="{{redo}}" aria-label="{{redo}}" data-icon="redo" disabled></button>
+    <div class="more-menu">
+      <button class="btn" id="shuffleBtn" data-icon="shuffle"><span>{{shuffle}}</span></button>
+      <button class="btn" id="newBtn" data-icon="file"><span>{{new}}</span></button>
+      <button class="icon" id="themeBtn" title="{{theme.title}}" data-icon="sun"><span>{{theme.label}}</span></button>
+    </div>
+    <button class="icon mobile-only" id="moreBtn" title="{{more}}" aria-label="{{more}}" data-icon="more"></button>
+    <button class="btn primary" id="exportBtn" data-icon="download"><span><span class="sh">{{export.short}}</span><span class="lg">{{export.long}}</span></span></button>
+  </div>
+</header>
+
+<main class="app">
+  <aside class="side">
+    <nav class="tabs">
+      <button data-tab="photos" class="on" data-icon="image"><span>{{tab.photos}}</span></button>
+      <button data-tab="layout" data-icon="layout"><span>{{tab.layout}}</span></button>
+      <button data-tab="style" data-icon="palette"><span>{{tab.style}}</span></button>
+      <button data-tab="extras" data-icon="type"><span>{{tab.extras}}</span></button>
+    </nav>
+
+    <div class="pane on" id="pane-photos">
+      <button class="drop" data-pick>
+        <span class="dz-ic" data-icon="upload"></span>
+        <b>{{photos.add}}</b>
+        <small>{{photos.hint}}</small>
+      </button>
+      <div class="btnrow"><button class="btn" id="sampleBtn" data-icon="sparkle"><span>{{photos.sample}}</span></button></div>
+      <div class="sub">{{photos.title}} <span class="muted" id="photoCount"></span></div>
+      <p class="muted" id="trayEmpty">{{photos.empty}}</p>
+      <div class="tray" id="tray"></div>
+    </div>
+
+    <div class="pane" id="pane-layout">
+      <div class="sub">{{canvas.title}}</div>
+      <label class="row"><span>{{canvas.format}}</span><select id="presetSel"></select></label>
+      <div class="row2">
+        <label>{{canvas.w}} <input type="number" id="canvasW" min="200" max="6000"></label>
+        <button class="icon" id="swapAspect" title="{{canvas.swap}}" aria-label="{{canvas.swap}}" data-icon="replace"></button>
+        <label>{{canvas.h}} <input type="number" id="canvasH" min="200" max="6000"></label>
+      </div>
+
+      <div class="sub">{{layout.grid}}</div>
+      <button class="auto" id="autoBtn"><span data-icon="sparkle"></span><div><b>{{layout.auto}}</b><small id="autoInfo"></small></div></button>
+      <div class="row2 stepper"><span>{{layout.cells}}</span><button class="icon" id="cellMinus" data-icon="zoomout" aria-label="-"></button><b id="cellCount">4</b><button class="icon" id="cellPlus" data-icon="zoomin" aria-label="+"></button></div>
+      <div class="tpls" id="tplGrid"></div>
+      <p class="muted small">{{layout.tip}}</p>
+
+      <div class="freeonly">
+        <div class="sub">{{layout.free}}</div>
+        <div class="btnrow"><button class="btn sm" id="scatterBtn" data-icon="shuffle"><span>{{layout.scatter}}</span></button><button class="btn sm" id="arrangeBtn" data-icon="layout"><span>{{layout.arrange}}</span></button></div>
+      </div>
+    </div>
+
+    <div class="pane" id="pane-style">
+      <div class="sub">{{style.quick}}</div>
+      <div class="themes" id="themes"></div>
+      <div class="sub">{{style.spacing}}</div>
+      <label class="row"><span>{{style.gap}}</span><input type="range" min="0" max="80" data-bind="gap"><output></output></label>
+      <label class="row"><span>{{style.margin}}</span><input type="range" min="0" max="140" data-bind="pad"><output></output></label>
+      <label class="row"><span>{{style.radius}}</span><input type="range" min="0" max="200" data-bind="radius"><output></output></label>
+      <div class="sub">{{style.border}}</div>
+      <label class="row"><span>{{style.width}}</span><input type="range" min="0" max="30" data-bind="border.w"><output></output></label>
+      <label class="row"><span>{{style.color}}</span><input type="color" data-bind="border.color"></label>
+      <div class="sub">{{style.shadow}}</div>
+      <label class="row"><span>{{style.enabled}}</span><input type="checkbox" data-bind="shadow.on"></label>
+      <label class="row"><span>{{style.blur}}</span><input type="range" min="0" max="80" data-bind="shadow.blur"><output></output></label>
+      <label class="row"><span>{{style.opacity}}</span><input type="range" min="0.05" max="1" step="0.05" data-bind="shadow.opacity"><output></output></label>
+      <div class="sub">{{style.background}}</div>
+      <div class="chips" id="bgTypes"><button class="chip" data-bgtype="solid">{{bg.solid}}</button><button class="chip" data-bgtype="gradient">{{bg.gradient}}</button><button class="chip" data-bgtype="pattern">{{bg.pattern}}</button><button class="chip" data-bgtype="blur">{{bg.blur}}</button><button class="chip" data-bgtype="none">{{bg.none}}</button></div>
+      <div data-bgshow="solid"><div class="sws" id="solidSw"></div></div>
+      <div data-bgshow="gradient"><div class="sws" id="gradSw"></div></div>
+      <label class="row" data-bgshow="solid gradient pattern blur"><span>{{style.color}}</span><input type="color" data-bind="bg.c1"></label>
+      <label class="row" data-bgshow="gradient pattern"><span>{{style.color2}}</span><input type="color" data-bind="bg.c2"></label>
+      <label class="row" data-bgshow="gradient"><span>{{style.angle}}</span><input type="range" min="0" max="360" data-bind="bg.angle"><output></output></label>
+      <label class="row" data-bgshow="pattern"><span>{{style.pattern}}</span><select data-bind="bg.pat"><option value="dots">{{pat.dots}}</option><option value="grid">{{pat.grid}}</option><option value="stripes">{{pat.stripes}}</option><option value="checker">{{pat.checker}}</option></select></label>
+    </div>
+
+    <div class="pane" id="pane-extras">
+      <div class="sub">{{extras.text}}</div>
+      <div class="btnrow"><button class="btn" data-text="head"><b>{{text.head}}</b></button><button class="btn" data-text="sub">{{text.sub}}</button><button class="btn" data-text="cap"><i>{{text.cap}}</i></button></div>
+      <div class="sub">{{extras.stickers}}</div>
+      <div class="stickers" id="stickerGrid"></div>
+    </div>
+    <footer class="foot">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="lock"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>{{footer.privacy}}</span>
+      <button class="fbtn" id="aboutBtn" title="{{footer.about}}" aria-label="{{footer.about}}"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></svg></button>
+      <button class="fbtn" id="langBtn" title="{{footer.language}}" aria-label="{{footer.language}}: {{langName}}"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg></button>
+      <a href="https://github.com/MoE1N/Collage-Studio" target="_blank" rel="noopener" title="{{footer.github}}" aria-label="{{footer.githubAria}}"><svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg></a>
+    </footer>
+  </aside>
+
+  <section class="stagearea" id="area">
+    <div class="stagewrap" id="wrap"><div id="stage"></div></div>
+    <div class="viewbar">
+      <span id="sizeLabel"></span>
+      <button class="icon" id="zoomOut" title="{{view.zoomOut}}" aria-label="{{view.zoomOut}}" data-icon="zoomout"></button>
+      <button class="icon" id="zoomFit" title="{{view.fit}}" aria-label="{{view.fit}}" data-icon="fit"></button>
+      <button class="icon" id="zoomIn" title="{{view.zoomIn}}" aria-label="{{view.zoomIn}}" data-icon="zoomin"></button>
+    </div>
+    <div class="veil" id="veil"><div>{{view.drop}}</div></div>
+  </section>
+
+  <aside class="inspector" id="insp"></aside>
+</main>
+
+<dialog id="exportDlg">
+  <div class="dlg">
+    <button class="icon close" id="expClose" data-icon="x" title="{{export.close}}" aria-label="{{export.close}}"></button>
+    <div class="prev checker"><img id="expPrev" alt="{{export.preview}}"></div>
+    <div class="opts">
+      <h2>{{export.title}}</h2>
+      <div class="sub">{{export.format}}</div>
+      <div class="seg full" id="expFmt"><button data-f="png" class="on">PNG</button><button data-f="jpg">JPG</button><button data-f="webp">WebP</button><button data-f="pdf">PDF</button></div>
+      <div class="sub">{{export.resolution}}</div>
+      <div class="seg full scale" id="expScale"></div>
+      <label class="row" id="qRow" hidden><span>{{export.quality}}</span><input type="range" min="0.5" max="1" step="0.01" value="0.92" id="expQ"><output>92%</output></label>
+      <label class="row" id="pdfRow" hidden><span>{{export.pdfPage}}</span><select id="pdfPage"><option value="fit">{{export.pdfFit}}</option><option value="a4">{{export.pdfA4}}</option><option value="letter">{{export.pdfLetter}}</option></select></label>
+      <label class="row"><span>{{export.fileName}}</span><input type="text" id="expName" value="collage"></label>
+      <p class="muted" id="expInfo"></p>
+      <p class="muted warn" id="expBg" hidden>{{export.bgWarn}}</p>
+      <div class="btnrow big">
+        <button class="btn primary" id="expDownload" data-icon="download"><span>{{export.download}}</span></button>
+        <button class="btn" id="expCopy" data-icon="copy"><span>{{export.copy}}</span></button>
+        <button class="btn" id="expShare" data-icon="share"><span>{{export.share}}</span></button>
+      </div>
+      <div class="btnrow">
+        <button class="btn sm" id="expOpen" data-icon="external"><span>{{export.open}}</span></button>
+        <button class="btn sm" id="expPrint" data-icon="file"><span>{{export.print}}</span></button>
+        <button class="btn sm" id="expSave" data-icon="save"><span>{{export.save}}</span></button>
+        <button class="btn sm" id="expLoad" data-icon="folder"><span>{{export.load}}</span></button>
+      </div>
+      <p class="muted small">{{export.shareHint}}</p>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="aboutDlg" class="info">
+  <div class="infobox">
+    <button class="icon close" data-close data-icon="x" title="{{about.close}}" aria-label="{{about.close}}"></button>
+    <h2>{{about.title}}</h2>
+    <p>{{about.intro}}</p>
+    <h3>{{about.faq}}</h3>
+    {{faqHtml}}
+  </div>
+</dialog>
+
+<dialog id="langDlg" class="info">
+  <div class="infobox">
+    <button class="icon close" data-close data-icon="x" title="{{about.close}}" aria-label="{{about.close}}"></button>
+    <h2>{{footer.language}}</h2>
+    <nav class="langs" aria-label="{{footer.language}}">{{langLinks}}</nav>
+  </div>
+</dialog>
+
+<button class="btn sm" id="doneBtn">{{done}}</button>
+<div id="toast" role="status"></div>
+<input type="file" id="fileInput" accept="image/*" multiple hidden>
+<input type="file" id="replaceInput" accept="image/*" hidden>
+<input type="file" id="projInput" accept=".json,application/json" hidden>
+
+<script>window.I18N={{i18n}};window.LOCALE="{{locale}}";window.ROOT="{{root}}";</script>
+<script src="{{root}}vendor/konva.min.js"></script>
+<script src="{{root}}vendor/jspdf.umd.min.js"></script>
+<script src="{{root}}js/i18n.js?v={{ver}}"></script>
+<script src="{{root}}js/data.js?v={{ver}}"></script>
+<script src="{{root}}js/app.js?v={{ver}}"></script>
+</body>
+</html>

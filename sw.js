@@ -1,6 +1,6 @@
-/* Offline support: network first (so updates show up immediately), cache as fallback. */
-const CACHE = 'collage-studio-v2';
-const ASSETS = ['./', 'index.html', 'css/style.css', 'js/app.js', 'js/data.js', 'vendor/konva.min.js', 'vendor/jspdf.umd.min.js', 'icon.svg', 'manifest.webmanifest'];
+/* Offline support: network first (so updates show up immediately), cache as fallback. Pages are cached as they are visited. */
+const CACHE = 'collage-studio-__VERSION__';
+const ASSETS = ['./', 'css/style.css', 'js/i18n.js', 'js/data.js', 'js/app.js', 'vendor/konva.min.js', 'vendor/jspdf.umd.min.js', 'icon.svg'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {

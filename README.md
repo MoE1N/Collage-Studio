@@ -5,9 +5,9 @@
 # Collage Studio
 
 **A fast, private photo collage maker that runs entirely in your browser.**
-No sign-up, no uploads, no build step.
+No sign-up, no uploads. Available in 24 languages.
 
-![No build](https://img.shields.io/badge/build-none-success?style=for-the-badge)
+![Languages](https://img.shields.io/badge/languages-24-blue?style=for-the-badge)
 ![Vanilla JS](https://img.shields.io/badge/vanilla-JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
 ![Konva](https://img.shields.io/badge/canvas-Konva-0D83CD?style=for-the-badge)
 ![PWA](https://img.shields.io/badge/PWA-offline%20ready-7c5cff?style=for-the-badge&logo=pwa&logoColor=white)
@@ -34,15 +34,21 @@ No sign-up, no uploads, no build step.
 
 ## Quick start
 
-There is nothing to install. Serve the folder with any static server:
+The page is generated per language by a small static build (no dependencies, runs on [Bun](https://bun.sh)):
 
 ```bash
-python3 -m http.server 5173
+bun run dev      # builds dist/ and serves it on http://localhost:5180
 ```
 
-Then open <http://localhost:5173> and click **Try sample photos**.
+Then open <http://localhost:5180> and click **Try sample photos**. Other commands: `bun run build` (just build `dist/`), `bun run check` (strict build, fails on any incomplete locale).
 
-> Serve over `http://localhost` or HTTPS. Opening `index.html` directly with `file://` disables the service worker and PWA install.
+> Serve over `http://localhost` or HTTPS. Opening a page directly with `file://` disables the service worker and PWA install.
+
+## Languages and SEO
+
+Each language is a static page (`/`, `/es/`, `/ar/`, ...) with its own `lang`/`dir`, title, description, canonical URL, `hreflang` alternates, Open Graph tags and JSON-LD (WebApplication and FAQPage). The build also writes `sitemap.xml`, `robots.txt` (AI crawlers allowed) and `llms.txt`. Translations are inlined into each page, so there are no extra requests at runtime. First-time visitors on the English root are redirected to their browser language.
+
+To add or fix a translation, edit `locales/<code>.json` (keys mirror `locales/en.json`) and register new languages in `locales/languages.json`. Validate with `bun scripts/build.mjs --check=<code>`. Deployment to GitHub Pages runs from `.github/workflows/pages.yml` (set Pages source to "GitHub Actions").
 
 ## How it works
 
@@ -74,9 +80,13 @@ Then open <http://localhost:5173> and click **Try sample photos**.
 
 ```
 .
-├── index.html            App shell and UI markup
+├── src/index.template.html  App shell template ({{key}} placeholders)
+├── locales/              en.json (source), one JSON per language, languages.json
+├── scripts/build.mjs     Static build: renders dist/ per language + SEO files
+├── .github/workflows/    Build and deploy to GitHub Pages
 ├── css/style.css         Styles (light and dark themes)
 ├── js/
+│   ├── i18n.js           Runtime translation helpers (L, Ln, Lh)
 │   ├── app.js            Editor logic, rendering, export
 │   └── data.js           Templates, aspect presets, themes, filters, fonts, stickers
 ├── vendor/               Konva (canvas) and jsPDF (PDF export), bundled locally

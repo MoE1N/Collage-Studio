@@ -1,0 +1,11 @@
+{
+  "name": "collage-studio",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun scripts/build.mjs",
+    "check": "bun scripts/build.mjs --strict",
+    "dev": "bun scripts/build.mjs && bun scripts/serve.mjs 5180",
+    "syntax": "bun scripts/syntax.mjs"
+  }
+}
