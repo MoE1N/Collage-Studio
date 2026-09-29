@@ -46,7 +46,7 @@ Then open <http://localhost:5180> and click **Try sample photos**. Other command
 
 ## Languages and SEO
 
-Each language is a static page (`/`, `/es/`, `/ar/`, ...) with its own `lang`/`dir`, title, description, canonical URL, `hreflang` alternates, Open Graph tags and JSON-LD (WebApplication and FAQPage). The build also writes `sitemap.xml`, `robots.txt` (AI crawlers allowed) and `llms.txt`. Translations are inlined into each page, so there are no extra requests at runtime. First-time visitors on the English root are redirected to their browser language.
+Each language is a static page (`/`, `/es/`, `/ar/`, ...) with its own `lang`/`dir`, title, description, canonical URL, `hreflang` alternates, Open Graph tags and JSON-LD (WebApplication and FAQPage). Each language also gets four content pages (how-to, Instagram sizes, print, comparison) generated from the `page.*` locale keys, with HowTo/Article and BreadcrumbList JSON-LD. The build also writes `sitemap.xml`, `robots.txt` (AI crawlers allowed), `llms.txt` and `llms-full.txt`. After each deploy the workflow pings IndexNow (Bing, Yandex, Naver and others). jsPDF is loaded only on the first PDF export. Translations are inlined into each page, so there are no extra requests at runtime. First-time visitors on the English root are redirected to their browser language.
 
 To add or fix a translation, edit `locales/<code>.json` (keys mirror `locales/en.json`) and register new languages in `locales/languages.json`. Validate with `bun scripts/build.mjs --check=<code>`. Deployment to GitHub Pages runs from `.github/workflows/pages.yml` (set Pages source to "GitHub Actions").
 

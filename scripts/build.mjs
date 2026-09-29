@@ -81,7 +81,27 @@ const ver = createHash('sha1').update(['css/style.css', 'js/i18n.js', 'js/data.j
 let date = new Date().toISOString().slice(0, 10);
 try { date = execSync('git log -1 --format=%cs', { cwd: ROOT }).toString().trim() || date; } catch { /* not a git checkout */ }
 
+/* Per-page lastmod: the newest commit that touched the files a page is built from (search engines ignore a lastmod that is always "today"). */
+const gitDates = new Map();
+function modified(...files) {
+  const ds = files.map(f => {
+    if (!gitDates.has(f)) { let d = ''; try { d = execSync(`git log -1 --format=%cs -- ${f}`, { cwd: ROOT }).toString().trim(); } catch { /* not a git checkout */ } gitDates.set(f, d); }
+    return gitDates.get(f);
+  }).filter(Boolean).sort();
+  return ds.length ? ds[ds.length - 1] : date;
+}
+const homeMod = l => modified(`locales/${l.code}.json`, 'locales/en.json', 'src/index.template.html');
+const pageMod = l => modified(`locales/${l.code}.json`, 'src/page.template.html', 'css/page.css', 'scripts/build.mjs');
 const active = langs.filter(l => dicts[l.code]);
+const INDEXNOW_KEY = 'b7e2c94f1d6a4a8e9c3f5d20a1e8b6c7';
+const PAGES = [
+  { id: 'howto', slug: 'how-to-make-a-photo-collage', kind: 'howto' },
+  { id: 'instagram', slug: 'instagram-collage-maker', kind: 'article' },
+  { id: 'print', slug: 'print-photo-collage', kind: 'article' },
+  { id: 'compare', slug: 'collage-maker-no-upload-no-watermark', kind: 'compare' },
+];
+const pageUrl = (l, pg) => `${urlOf(l)}${pg.slug}/`;
+const homeRel = l => (l === DEFAULT ? '' : l.code + '/');
 const hreflang = active.map(l => `<link rel="alternate" hreflang="${l.hreflang}" href="${urlOf(l)}">`).concat(`<link rel="alternate" hreflang="x-default" href="${urlOf(DEFAULT)}">`).join('\n');
 
 /* Root page only: send first-time visitors to their language. Crawlers keep the English page. */
@@ -110,11 +130,12 @@ function render(l) {
     lang: l.hreflang, dir: l.dir, locale: l.hreflang, canonical: urlOf(l), site, root, ver, hreflang, jsonld, langName: l.name, ogLocale: l.og,
     ogAlternates: active.filter(x => x !== l).map(x => `<meta property="og:locale:alternate" content="${x.og}">`).join('\n'),
     redirect: l === DEFAULT ? redirect : '',
+    guideLinks: PAGES.map(pg => `<li><a href="${root}${homeRel(l)}${pg.slug}/">${esc(d[`page.${pg.id}.h1`])}</a></li>`).join(''),
     faqHtml: faq.map(f => `<section class="faq"><h4>${esc(f.q)}</h4><p>${esc(f.a)}</p></section>`).join('\n    '),
     langLinks: active.map(x => `<a href="${x === DEFAULT ? root || './' : root + x.code + '/'}" hreflang="${x.hreflang}" lang="${x.hreflang}" dir="${x.dir}" data-lang="${x.code}"${x === l ? ' aria-current="true"' : ''}>${esc(x.name)}</a>`).join('\n      '),
-    i18n: JSON.stringify(d).replace(/</g, '\\u003c'),
+    i18n: JSON.stringify(Object.fromEntries(Object.entries(d).filter(([k]) => !/^(page|faq|about|meta)\./.test(k)))).replace(/</g, '\\u003c'),
   };
-  const raw = new Set(['hreflang', 'jsonld', 'ogAlternates', 'redirect', 'faqHtml', 'langLinks', 'i18n']);
+  const raw = new Set(['hreflang', 'jsonld', 'ogAlternates', 'redirect', 'guideLinks', 'faqHtml', 'langLinks', 'i18n']);
   return read('src/index.template.html').replace(/\{\{([\w.-]+)\}\}/g, (m, k) => {
     if (k in map) return raw.has(k) ? map[k] : esc(map[k]);
     if (k in d) return esc(d[k]);
@@ -149,11 +170,44 @@ for (const l of active) {
 }
 write('404.html', render(DEFAULT).replace('<title>', '<meta name="robots" content="noindex">\n<title>'));
 
+function renderPage(l, pg) {
+  const d = dicts[l.code];
+  const k = x => d[`page.${pg.id}.${x}`];
+  const root = l === DEFAULT ? '../' : '../../';
+  const sections = [1, 2, 3].map(i => `<section><h2>${esc(k(`s${i}.h`))}</h2><p>${esc(k(`s${i}.p`))}</p></section>`);
+  let body = '';
+  if (pg.kind === 'howto') body = `<section><ol>${[1, 2, 3, 4, 5].map(i => `<li>${esc(k(`step${i}`))}</li>`).join('')}</ol></section>` + sections.join('');
+  else if (pg.kind === 'compare') body = `<table><thead><tr><th scope="col">${esc(k('colFeature'))}</th><th scope="col">${esc(k('colUs'))}</th><th scope="col">${esc(k('colThem'))}</th></tr></thead><tbody>${[1, 2, 3, 4, 5, 6].map(i => `<tr><th scope="row">${esc(k(`row${i}.label`))}</th><td>${esc(k(`row${i}.us`))}</td><td>${esc(k(`row${i}.them`))}</td></tr>`).join('')}</tbody></table>` + sections.slice(0, 2).join('');
+  else body = sections.join('');
+  const url = pageUrl(l, pg);
+  const graph = [
+    { '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: 'Collage Studio', item: urlOf(l) }, { '@type': 'ListItem', position: 2, name: k('h1'), item: url }] },
+    pg.kind === 'howto'
+      ? { '@type': 'HowTo', name: k('h1'), description: k('desc'), inLanguage: l.hreflang, dateModified: pageMod(l), tool: { '@type': 'HowToTool', name: 'Collage Studio' }, step: [1, 2, 3, 4, 5].map(i => ({ '@type': 'HowToStep', position: i, text: k(`step${i}`) })) }
+      : { '@type': 'Article', headline: k('h1'), description: k('desc'), inLanguage: l.hreflang, dateModified: pageMod(l), mainEntityOfPage: url, image: `${site}/og.png`, author: { '@type': 'Organization', name: 'Collage Studio', url: `${site}/` }, publisher: { '@type': 'Organization', name: 'Collage Studio', url: `${site}/` } },
+  ];
+  const map = {
+    lang: l.hreflang, dir: l.dir, canonical: url, site, root, ver, ogLocale: l.og, appHref: '../',
+    title: k('title'), desc: k('desc'), h1: k('h1'), intro: k('intro'), body, updated: d['page.updated'].replace('{date}', pageMod(l)),
+    cta: d['page.cta'], openApp: d['page.openApp'], related: d['page.related'],
+    hreflang: active.map(x => `<link rel="alternate" hreflang="${x.hreflang}" href="${pageUrl(x, pg)}">`).concat(`<link rel="alternate" hreflang="x-default" href="${pageUrl(DEFAULT, pg)}">`).join('\n'),
+    jsonld: JSON.stringify({ '@context': 'https://schema.org', '@graph': graph }).replace(/</g, '\\u003c'),
+    relatedLinks: PAGES.filter(x => x !== pg).map(x => `<li><a href="../${x.slug}/">${esc(d[`page.${x.id}.h1`])}</a></li>`).join(''),
+    langLinks: active.map(x => `<a href="${l === DEFAULT ? '../' : '../../'}${homeRel(x)}${pg.slug}/" hreflang="${x.hreflang}" lang="${x.hreflang}" dir="${x.dir}"${x === l ? ' aria-current="true"' : ''}>${esc(x.name)}</a>`).join(''),
+  };
+  const raw = new Set(['hreflang', 'jsonld', 'body', 'relatedLinks', 'langLinks']);
+  return read('src/page.template.html').replace(/\{\{([\w.-]+)\}\}/g, (m, key) => { if (!(key in map)) throw new Error(`Page template uses unknown key "${key}"`); return raw.has(key) ? map[key] : esc(map[key]); });
+}
+for (const l of active) for (const pg of PAGES) write(`${homeRel(l)}${pg.slug}/index.html`, renderPage(l, pg));
+
 const aiBots = ['GPTBot', 'OAI-SearchBot', 'ChatGPT-User', 'ClaudeBot', 'Claude-User', 'Claude-SearchBot', 'anthropic-ai', 'PerplexityBot', 'Perplexity-User', 'Google-Extended', 'Applebot-Extended', 'CCBot', 'Bytespider', 'cohere-ai', 'Meta-ExternalAgent', 'DuckAssistBot'];
 write('robots.txt', `User-agent: *\nAllow: /\n\n${aiBots.map(b => `User-agent: ${b}\nAllow: /\n`).join('\n')}\nSitemap: ${site}/sitemap.xml\n`);
-write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${active.map(l => `  <url>\n    <loc>${urlOf(l)}</loc>\n    <lastmod>${date}</lastmod>\n${active.map(x => `    <xhtml:link rel="alternate" hreflang="${x.hreflang}" href="${urlOf(x)}"/>`).join('\n')}\n    <xhtml:link rel="alternate" hreflang="x-default" href="${urlOf(DEFAULT)}"/>\n  </url>`).join('\n')}\n</urlset>\n`);
+const smUrl = (loc, alt, lastmod) => `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${lastmod}</lastmod>\n${active.map(x => `    <xhtml:link rel="alternate" hreflang="${x.hreflang}" href="${alt(x)}"/>`).join('\n')}\n    <xhtml:link rel="alternate" hreflang="x-default" href="${alt(DEFAULT)}"/>\n  </url>`;
+write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${[...active.map(l => smUrl(urlOf(l), urlOf, homeMod(l))), ...PAGES.flatMap(pg => active.map(l => smUrl(pageUrl(l, pg), x => pageUrl(x, pg), pageMod(l))))].join('\n')}\n</urlset>\n`);
+write(`${INDEXNOW_KEY}.txt`, INDEXNOW_KEY);
 
 const faqEn = [1, 2, 3, 4, 5, 6].map(i => `### ${en[`faq.q${i}`]}\n${en[`faq.a${i}`]}`).join('\n\n');
-write('llms.txt', `# Collage Studio\n\n> ${en['meta.description']}\n\nCollage Studio is a free, open source photo collage maker. It is a static web app: photos are processed locally in the browser with the HTML canvas and are never uploaded. No account, no watermark, no tracking. It can be installed as an offline-capable progressive web app.\n\n## Key facts\n\n- Price: free\n- Privacy: everything runs on the user's device\n- Export formats: PNG, JPG, WebP, PDF (up to 4x canvas size)\n- Layouts: auto-fit (least crop), 1 to 16 cell templates, draggable dividers, freeform mode\n- Editing: filters, borders, shadows, gradients and patterns, text, stickers\n- Source code: https://github.com/MoE1N/Collage-Studio\n\n## Languages\n\n${active.map(l => `- [${l.name}](${urlOf(l)})`).join('\n')}\n\n## FAQ\n\n${faqEn}\n`);
+write('llms.txt', `# Collage Studio\n\n> ${en['meta.description']}\n\nCollage Studio is a free, open source photo collage maker. It is a static web app: photos are processed locally in the browser with the HTML canvas and are never uploaded. No account, no watermark, no tracking. It can be installed as an offline-capable progressive web app.\n\n## Key facts\n\n- Price: free\n- Privacy: everything runs on the user's device\n- Export formats: PNG, JPG, WebP, PDF (up to 4x canvas size)\n- Layouts: auto-fit (least crop), 1 to 16 cell templates, draggable dividers, freeform mode\n- Editing: filters, borders, shadows, gradients and patterns, text, stickers\n- Source code: https://github.com/MoE1N/Collage-Studio\n\n## Languages\n\n${active.map(l => `- [${l.name}](${urlOf(l)})`).join('\n')}\n\n## Guides\n\n${PAGES.map(pg => `- [${en[`page.${pg.id}.h1`]}](${pageUrl(DEFAULT, pg)}): ${en[`page.${pg.id}.desc`]}`).join('\n')}\n\n## FAQ\n\n${faqEn}\n`);
+write('llms-full.txt', `# Collage Studio\n\n${en['about.intro']}\n\n## FAQ\n\n${faqEn}\n\n${PAGES.map(pg => { const g = x => en[`page.${pg.id}.${x}`]; const parts = [`## ${g('h1')}`, g('intro')]; if (pg.kind === 'howto') parts.push([1, 2, 3, 4, 5].map(i => `${i}. ${g(`step${i}`)}`).join('\n')); if (pg.kind === 'compare') parts.push([1, 2, 3, 4, 5, 6].map(i => `- ${g(`row${i}.label`)}: ${g(`row${i}.us`)} (typical cloud apps: ${g(`row${i}.them`)})`).join('\n')); for (const i of [1, 2, 3]) if (g(`s${i}.h`)) parts.push(`### ${g(`s${i}.h`)}\n${g(`s${i}.p`)}`); return parts.join('\n\n'); }).join('\n\n')}\n`);
 
 console.log(`Built ${active.length} language(s) into dist/ (v${ver})${problems.length ? `, ${problems.length} locale warning(s)` : ''}`);

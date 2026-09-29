@@ -18,11 +18,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # per-page sitemap lastmod comes from git history
       - uses: oven-sh/setup-bun@v2
       - name: Syntax check
         run: bun run syntax
       - name: Build (strict, every locale must be complete)
         run: bun run check
+      - name: Validate sitemap
+        run: bun scripts/check-sitemap.mjs
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
@@ -40,3 +44,16 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  indexnow:
+    if: github.event_name != 'pull_request'
+    needs: deploy
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - name: Build (to list the URLs)
+        run: bun run build
+      - name: Notify IndexNow search engines
+        run: bun scripts/indexnow.mjs

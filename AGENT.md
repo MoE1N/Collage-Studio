@@ -57,6 +57,7 @@ Scripts are classic (non-module) files, so top-level functions and constants are
 - Plural strings use `key.one`, `key.other` (plus `zero/two/few/many` where the language needs them, per `Intl.PluralRules`). Call `Ln('key', n)`.
 - Adding a key: add it to `en.json`, then to every locale (`bun run check` lists what is missing). Adding a language: create `locales/<code>.json`, add an entry to `languages.json`.
 - The UI mirrors for `dir: "rtl"` languages. Use logical CSS properties (`margin-inline-start`, `inset-inline-end`), not left/right. The canvas area stays `direction: ltr`.
+- Content pages: `PAGES` in `scripts/build.mjs` lists them (`src/page.template.html`, `css/page.css`). Their text is the `page.<id>.*` keys, which are not inlined into the app. `scripts/indexnow.mjs` runs from the workflow after deploy.
 - No em dashes in any locale (the build rejects them).
 
 ## Conventions

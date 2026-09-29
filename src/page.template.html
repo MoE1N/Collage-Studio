@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="{{lang}}" dir="{{dir}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{title}}</title>
+<meta name="description" content="{{desc}}">
+<meta name="theme-color" content="#7c5cff">
+<link rel="canonical" href="{{canonical}}">
+{{hreflang}}
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Collage Studio">
+<meta property="og:title" content="{{title}}">
+<meta property="og:description" content="{{desc}}">
+<meta property="og:url" content="{{canonical}}">
+<meta property="og:locale" content="{{ogLocale}}">
+<meta property="og:image" content="{{site}}/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="{{root}}icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="{{root}}apple-touch-icon.png">
+<link rel="stylesheet" href="{{root}}css/page.css?v={{ver}}">
+<script type="application/ld+json">{{jsonld}}</script>
+</head>
+<body>
+<header class="ptop">
+  <a class="pbrand" href="{{appHref}}"><span class="plogo"></span>Collage Studio</a>
+  <a class="pcta" href="{{appHref}}">{{cta}}</a>
+</header>
+<main class="page">
+  <article>
+    <h1>{{h1}}</h1>
+    <p class="lead">{{intro}}</p>
+    {{body}}
+    <p class="updated">{{updated}}</p>
+  </article>
+  <aside class="cta-box">
+    <p>{{openApp}}</p>
+    <a class="pcta" href="{{appHref}}">{{cta}}</a>
+  </aside>
+  <nav class="related" aria-label="{{related}}">
+    <h2>{{related}}</h2>
+    <ul>{{relatedLinks}}</ul>
+  </nav>
+  <nav class="plangs" aria-label="Languages">{{langLinks}}</nav>
+</main>
+</body>
+</html>

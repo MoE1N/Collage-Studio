@@ -180,6 +180,8 @@
     <button class="icon close" data-close data-icon="x" title="{{about.close}}" aria-label="{{about.close}}"></button>
     <h2>{{about.title}}</h2>
     <p>{{about.intro}}</p>
+    <h3>{{page.guides}}</h3>
+    <ul class="guides">{{guideLinks}}</ul>
     <h3>{{about.faq}}</h3>
     {{faqHtml}}
   </div>
@@ -200,10 +202,9 @@
 <input type="file" id="projInput" accept=".json,application/json" hidden>
 
 <script>window.I18N={{i18n}};window.LOCALE="{{locale}}";window.ROOT="{{root}}";</script>
-<script src="{{root}}vendor/konva.min.js"></script>
-<script src="{{root}}vendor/jspdf.umd.min.js"></script>
-<script src="{{root}}js/i18n.js?v={{ver}}"></script>
-<script src="{{root}}js/data.js?v={{ver}}"></script>
-<script src="{{root}}js/app.js?v={{ver}}"></script>
+<script defer src="{{root}}vendor/konva.min.js"></script>
+<script defer src="{{root}}js/i18n.js?v={{ver}}"></script>
+<script defer src="{{root}}js/data.js?v={{ver}}"></script>
+<script defer src="{{root}}js/app.js?v={{ver}}"></script>
 </body>
 </html>

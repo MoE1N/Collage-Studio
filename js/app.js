@@ -1092,7 +1092,8 @@ async function getBlob(fmt = exp.fmt, mult = exp.mult) {
   if (blobCache && blobCache.key === key) return blobCache.blob;
   const blob = await makeBlob(fmt, mult); blobCache = { key, blob }; return blob;
 }
-function makePdf(c) {
+async function makePdf(c) {
+  if (!window.jspdf) await new Promise((ok, fail) => { const sc = document.createElement('script'); sc.src = (window.ROOT || '') + 'vendor/jspdf.umd.min.js'; sc.onload = ok; sc.onerror = fail; document.head.append(sc); }); // loaded on first PDF export to keep startup light
   const { jsPDF } = window.jspdf;
   const flat = document.createElement('canvas'); flat.width = c.width; flat.height = c.height; const x = flat.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(c, 0, 0);
   const data = flat.toDataURL('image/jpeg', exp.q);

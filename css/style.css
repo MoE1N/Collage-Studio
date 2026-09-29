@@ -198,3 +198,4 @@ dialog.info { width: min(640px, 94vw); }
 [dir="rtl"] .infobox h2 { margin: 0 0 10px 34px; }
 .row output { direction: ltr; unicode-bidi: isolate; } [dir="rtl"] .row output { text-align: left; }
 @media (max-width: 760px) { dialog.info { width: 100vw; } }
+.guides { margin: 0; padding-inline-start: 18px; } .guides a { color: var(--accent); }
