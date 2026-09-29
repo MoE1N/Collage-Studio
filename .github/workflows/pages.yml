@@ -21,7 +21,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - name: Syntax check
         run: bun run syntax
-      - name: Build (strict: every locale must be complete)
+      - name: Build (strict, every locale must be complete)
         run: bun run check
       - uses: actions/upload-pages-artifact@v3
         with:
