@@ -87,7 +87,7 @@ Then open <http://localhost:5173> and click **Try sample photos**.
 
 ## Privacy
 
-Photos are read with the browser File API and drawn to a local canvas. Nothing is uploaded, and no analytics or external requests are made. All dependencies are bundled in `vendor/`.
+**No tracking and no data collection.** Everything happens locally in your browser. Photos are read with the browser File API and drawn to a local canvas. Nothing is uploaded, and no analytics or external requests are made. All dependencies are bundled in `vendor/`.
 
 ## Built with
 
