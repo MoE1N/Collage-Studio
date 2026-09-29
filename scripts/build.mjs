@@ -127,14 +127,19 @@ function manifest(l) {
   return JSON.stringify({
     id: urlOf(l), name: 'Collage Studio', short_name: 'Collage', description: d['meta.manifestDescription'], lang: l.hreflang, dir: l.dir,
     start_url: './', scope: './', display: 'standalone', background_color: '#f3f4f8', theme_color: '#7c5cff',
-    icons: [{ src: `${root}icon.svg`, sizes: 'any', type: 'image/svg+xml', purpose: 'any' }],
+    icons: [
+      { src: `${root}icon.svg`, sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+      { src: `${root}icon-192.png`, sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: `${root}icon-512.png`, sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: `${root}icon-maskable-512.png`, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+    ],
   }, null, 2) + '\n';
 }
 
 /* ---------- write dist/ ---------- */
 rmSync(DIST, { recursive: true, force: true });
 for (const dir of ['css', 'js', 'vendor']) cpSync(join(ROOT, dir), join(DIST, dir), { recursive: true });
-for (const f of ['icon.svg', 'og.png', 'CNAME']) cpSync(join(ROOT, f), join(DIST, f));
+for (const f of ['icon.svg', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png', 'og.png', 'CNAME']) cpSync(join(ROOT, f), join(DIST, f));
 write('.nojekyll', '');
 write('sw.js', read('sw.js').replace('__VERSION__', ver));
 for (const l of active) {

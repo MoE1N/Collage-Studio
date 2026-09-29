@@ -21,8 +21,7 @@ button { cursor: pointer; }
 .topbar { height: 56px; flex: none; display: flex; align-items: center; gap: 14px; padding: 0 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
 .brand { display: flex; align-items: center; gap: 10px; font-size: 15px; margin: 0; font-weight: 400; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.logo { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg, #7c5cff, #ff6ec7 60%, #ffb86b); position: relative; }
-.logo::after { content: ""; position: absolute; inset: 6px; border-radius: 2px; background: repeating-linear-gradient(90deg, #fff 0 4px, transparent 4px 6px); opacity: .85; mask: linear-gradient(#000 0 0); }
+.logo { width: 28px; height: 28px; border-radius: 8px; background: url(../icon.svg) center / cover no-repeat; box-shadow: 0 1px 4px rgba(124, 92, 255, .35); }
 .tools { margin-inline-start: auto; display: flex; align-items: center; gap: 8px; }
 
 .btn, .icon, .chip, .auto { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; transition: background .15s, border-color .15s, transform .05s; }
